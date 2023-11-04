@@ -54,6 +54,7 @@
             {
                 "name": "hello1",
                 "keb": "hello1",
+                "null": null,
                 "op": [
                     {"a": "a"}
                 ],

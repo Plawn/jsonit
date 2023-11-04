@@ -63,7 +63,6 @@ enum ParseValueType {
 	String,
 	Number,
 	Null,
-	Undefined,
 	Map,
 	Array,
 }
@@ -77,8 +76,6 @@ enum State {
 	/// We expect ":" or whitespace
 	ExpectPoints,
 	None,
-	// / for \" items
-	// Escape,
 }
 
 fn stack_as_path(v: &[String]) -> String {
@@ -236,13 +233,6 @@ fn iter_delimiters(
                                 stack_dirty = true;
                             }
                         }
-                        ParseValueType::Undefined => {
-                            if c == "," {
-                                state = State::ParseObject;
-                                key_stack.pop();
-                                stack_dirty = true;
-                            }
-                        }
                         ParseValueType::Map => {
                             // key_stack.push(current_key.clone());
                             // current_key.clear();
@@ -255,8 +245,6 @@ fn iter_delimiters(
                         state = State::ParseValue(ParseValueType::String);
                     } else if c == "n" {
                         state = State::ParseValue(ParseValueType::Null);
-                    } else if c == "u" {
-                        state = State::ParseValue(ParseValueType::Undefined);
                     } else if c == "{" {
                         state = State::ParseValue(ParseValueType::Map);
                     } else if c == "[" {
@@ -320,6 +308,7 @@ mod tests {
 
 	use super::*;
 
+    /// in order to ensure retest when the json test file changes
 	macro_rules! build_on {
 		($file:literal) => {
 			const _: &[u8] = include_bytes!($file);
