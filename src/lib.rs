@@ -85,7 +85,7 @@ fn stack_as_path(v: &[String]) -> String {
 	v.join(".")
 }
 
-const DEBUG: bool = true;
+const DEBUG: bool = false;
 
 /// will only support the stream loading of an array of object under a object key chain, like "a.b.c"
 /// does not support delimiting a struct of type array for now
@@ -124,38 +124,49 @@ fn iter_delimiters(
             if stack_dirty && stack_as_path(&key_stack) == prefix {
                 stack_dirty = false;
                 in_key = true;
+                // array_nesting = 1;
             }
 
             // if we are in the searched key
             // TODO: skip useless characters maybe
             if in_key {
-                // end of parsing, skip the rest of the stream
+                
                 if c == "[" {
                     array_nesting += 1;
+                    if object_nesting == 0 && array_nesting == 2 {
+                        started = true;
+                        return Delimiter::Start(StructType::Array);
+                    }
                 }
 
                 if c == "]" {
                     array_nesting -= 1;
-                    
+
+                    if object_nesting == 0 && array_nesting == 1 {
+                        started = false;
+                        return Delimiter::End(StructType::Array);
+                    }
+
+                    // end of parsing, skip the rest of the stream    
                     if array_nesting == 0 {
                         in_key = false;
                         return Delimiter::Stop;
                     }
                 }
 
-                if c == "}" {
-                    object_nesting -= 1;
-                    if object_nesting == 0 {
-                        started = false;
-                        return Delimiter::End(StructType::Map);
-                    }
-                }
-                
                 if c == "{"  {
                     object_nesting += 1;
-                    if object_nesting == 1 {
+                    if object_nesting == 1 && array_nesting == 1 {
                         started = true;
                         return Delimiter::Start(StructType::Map);
+                    }
+                }
+
+                if c == "}" {
+                    object_nesting -= 1;
+                    if object_nesting == 0 && array_nesting == 1 {
+                        started = false;
+                        return Delimiter::End(StructType::Map);
                     }
                 }
 
@@ -318,7 +329,12 @@ mod tests {
 	#[derive(Deserialize, Debug)]
 	struct V {
 		name: String,
+        op: Vec<Op>,
 	}
+    #[derive(Deserialize, Debug)]
+    struct Op {
+        a: String,
+    }   
 
 	build_on!("test.json");
 
@@ -330,7 +346,7 @@ mod tests {
 		let i = reader
 			.lines()
 			.flat_map(|l| l.unwrap().chars().map(|e| e.to_string()).collect::<Vec<_>>());
-        return i;
+        i
     }
 
 	#[test]
@@ -345,9 +361,11 @@ mod tests {
 					count += 1;
 					if index == 0 {
 						assert!(value.name == "hello1");
+                        assert!(value.op.get(0).unwrap().a == "a");
 					}
 					if index == 1 {
 						assert!(value.name == "hello2");
+                        assert!(value.op.get(0).unwrap().a == "a");
 					}
 				}
 				Err(err) => {
@@ -358,30 +376,25 @@ mod tests {
 		assert!(count == 2);
 	}
 
-    // type Arr = Vec<u32>;
+    type Arr = Vec<u32>;
 
-    // #[test]
-	// fn test_nominal_array() {
-    //     let prefix = "array";
-	// 	let mut count = 0;
-    //     let chars = load_as_chars();
-	// 	for (index, i) in stream_read_items_at::<Arr>(chars, String::from(prefix)).enumerate() {
-	// 		match i {
-	// 			Ok(value) => {
-	// 				println!("{:?}", &value);
-	// 				count += 1;
-	// 				// if index == 0 {
-	// 				// 	assert!(value == "hello1");
-	// 				// }
-	// 				// if index == 1 {
-	// 				// 	assert!(value == "hello2");
-	// 				// }
-	// 			}
-	// 			Err(err) => {
-	// 				panic!("Failed to parse item: {}", err);
-	// 			}
-	// 		}
-	// 	}
-	// 	assert!(count == 2);
-	// }
+    #[test]
+	fn test_nominal_array() {
+        let prefix = "array";
+		let mut count = 0;
+        let chars = load_as_chars();
+		for (_, i) in stream_read_items_at::<Arr>(chars, String::from(prefix)).enumerate() {
+			match i {
+				Ok(value) => {
+					println!("{:?}", &value);
+					count += 1;
+				}
+				Err(err) => {
+					panic!("Failed to parse item: {}", err);
+				}
+			}
+		}
+		assert!(count == 8);
+	}
 }
+
