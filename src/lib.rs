@@ -1,6 +1,6 @@
 use serde::de::DeserializeOwned;
 
-fn fold_and_parse<T>(iterator: impl Iterator<Item = Delimiter> + 'static) -> impl Iterator<Item = serde_json::Result<T>>
+fn fold_and_parse<T>(iterator: impl Iterator<Item = Delimiter>) -> impl Iterator<Item = serde_json::Result<T>>
 where
 	T: DeserializeOwned,
 {
@@ -20,7 +20,7 @@ where
 			Some(serde_json::from_str::<T>(&t))
 		}
 		// should never arrive here
-		Delimiter::Stop => None,
+		Delimiter::Stop => panic!("Hum, we should never be here, got stop"),
 		// should never arrive here
 		Delimiter::Skip => None,
 		Delimiter::Start(e) => {
@@ -90,17 +90,26 @@ fn iter_delimiters(
 	iterator: impl Iterator<Item = String> + 'static,
 	prefix: String,
 ) -> impl Iterator<Item = Delimiter> + 'static {
-	let mut key_stack: Vec<String> = vec![];
-	let mut current_key = String::new();
+	// in order to know where we are in the object
+    let mut key_stack: Vec<String> = vec![];
+	// the current key where we parse the value
+    let mut current_key = String::new();
 
+    // if we should be currently returning items
 	let mut in_key = false;
 	let mut object_nesting = 0;
-	let mut started = false;
-	let mut state = State::None;
-	// only handle when inside the returned value
 	let mut array_nesting = 0;
-	let mut stack_dirty = false;
-	let mut escape = false;
+    // if we have started returning values
+    // can maybe optimized away later
+    let mut started = false;
+	// keeps state of the parsing
+    let mut state = State::None;
+	
+	
+	// prevents rebuilding the key stack without rebuilding it
+    let mut stack_dirty = false;
+	// Keeps state if the next character is escaped
+    let mut escape = false;
 
 	return iterator
         .map(move |s| {
@@ -243,7 +252,7 @@ fn iter_delimiters(
                 State::ExpectValue => {
                     if c == "\"" {
                         state = State::ParseValue(ParseValueType::String);
-                    } else if c == "n" {
+                    } else if c == "n" { // speculative nominal value is null
                         state = State::ParseValue(ParseValueType::Null);
                     } else if c == "{" {
                         state = State::ParseValue(ParseValueType::Map);
@@ -273,7 +282,7 @@ fn iter_delimiters(
                         // start root of object
                         state = State::ParseObject;
                     } else if c == "[" {
-                        panic!("arrays are unsupported for now");
+                        todo!("arrays are unsupported for now");
                     } else if c != " " {
                         panic!("malformed");
                     }
@@ -281,13 +290,15 @@ fn iter_delimiters(
             };
             Delimiter::Skip
         })
-        // stop at the first stop we get
         .take_while(|e| *e != Delimiter::Stop);
-	// here fold by start and end
-	// parse result folded string
-	// return stream of parsed struct
 }
 
+
+/// Returns an iterator returning serde parsed struct when consumed
+/// 
+/// 
+/// 
+/// 
 pub fn stream_read_items_at<T>(
 	iterator: impl Iterator<Item = String> + 'static,
 	prefix: String,
