@@ -1,6 +1,6 @@
 use serde::de::DeserializeOwned;
 
-pub fn step2<T>(
+fn fold_and_parse<T>(
     iterator: impl Iterator<Item = Delimiter> + 'static,
 ) -> impl Iterator<Item = serde_json::Result<T>>
 where
@@ -8,27 +8,24 @@ where
 {
     let mut v: Vec<String> = vec![];
 
-    return iterator
-        .map(move |e| match e {
-            Delimiter::Item(e) => {
-                v.push(e);
-                None
-            }
-            Delimiter::End => {
-                v.push("}".into());
-                // parse here
-                let t = v.join("");
-                Some(serde_json::from_str::<T>(&t))
-            }
-            Delimiter::Skip => None,
-            Delimiter::Start => {
-                v.clear();
-                v.push("{".into());
-                None
-            }
-        })
-        .filter(|e| e.is_some())
-        .map(|e| e.unwrap());
+    iterator.filter_map(move |e| match e {
+        Delimiter::Item(e) => {
+            v.push(e);
+            None
+        }
+        Delimiter::End => {
+            v.push("}".into());
+            // parse here
+            let t = v.join("");
+            Some(serde_json::from_str::<T>(&t))
+        }
+        Delimiter::Skip => None,
+        Delimiter::Start => {
+            v.clear();
+            v.push("{".into());
+            None
+        }
+    })
 }
 
 #[derive(PartialEq, Debug)]
@@ -62,33 +59,27 @@ enum State {
     // Escape,
 }
 
-impl Delimiter {
-    fn is_skip(&self) -> bool {
-        return self == &Self::Skip;
-    }
-}
-
 fn stack_as_path(v: &Vec<String>) -> String {
-    return v.join(".");
+    v.join(".")
 }
 
 const DEBUG: bool = false;
 
 /// will only support the stream loading of an array of object under a object key chain, like "a.b.c"
 /// c containing the objects of type T
-pub fn stream_read_array_at(
+fn iter_delimiters(
     iterator: impl Iterator<Item = String> + 'static,
     prefix: String,
 ) -> impl Iterator<Item = Delimiter> + 'static {
     let mut key_stack: Vec<String> = vec![];
     let mut current_key = String::new();
 
-    let mut in_key = false;
-    let mut object_nesting = 0;
+    let _in_key = false;
+    let object_nesting = 0;
     let mut started = false;
     let mut state = State::None;
     // only handle when inside the returned value
-    let mut array_nesting = 0;
+    let array_nesting = 0;
 
     let mut escape = false;
 
@@ -237,11 +228,23 @@ pub fn stream_read_array_at(
                 }
             }
         };
-        return Delimiter::Skip;
+        Delimiter::Skip
     });
     // here fold by start and end
     // parse result folded string
     // return stream of parsed struct
+}
+
+pub fn stream_read_items_at<T>(
+    iterator: impl Iterator<Item = String> + 'static,
+    prefix: String,
+) -> impl Iterator<Item = serde_json::Result<T>>
+where
+    T: DeserializeOwned,
+{
+    let r1 = iter_delimiters(iterator, prefix);
+    let r2 = fold_and_parse::<T>(r1);
+    return r2;
 }
 
 #[cfg(test)]
@@ -271,19 +274,13 @@ mod tests {
         let f = File::open("./src/test.json").expect("failed to read test file");
         let reader = BufReader::new(f);
         // let reader = buffered(f, 10);
-        let i = reader
-            .lines()
-            .into_iter()
-            .map(|l| {
-                l.unwrap()
-                    .chars()
-                    .map(|e| e.to_string())
-                    .collect::<Vec<_>>()
-            })
-            .flatten();
-        let r = stream_read_array_at(i, String::from(prefix));
-        let mut index = 0;
-        for i in step2::<V>(r) {
+        let i = reader.lines().flat_map(|l| {
+            l.unwrap()
+                .chars()
+                .map(|e| e.to_string())
+                .collect::<Vec<_>>()
+        });
+        for (index, i) in stream_read_items_at::<V>(i, String::from(prefix)).enumerate() {
             match i {
                 Ok(value) => {
                     if index == 0 {
@@ -297,7 +294,6 @@ mod tests {
                     panic!("Failed to parse item: {}", err);
                 }
             }
-            index += 1;
         }
     }
 }
