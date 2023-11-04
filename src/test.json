@@ -1,0 +1,26 @@
+{
+    "base": {
+        "other": [1, 2, {"1": 2}, "dedzef"]
+    },
+    "root": {
+        "items": [
+            {
+                "name": "hello1",
+                "keb": "hello1",
+                "obj": {
+                    "e": []
+                }
+            },
+            {
+                "name": "hello2",
+                "keb": "hello1",
+                "obj": {
+                    "e": []
+                }
+            }
+        ]
+    },
+    "oth": {
+        "items": {} 
+    }
+}
