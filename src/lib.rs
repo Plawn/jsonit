@@ -11,32 +11,51 @@ where
 			v.push(e);
 			None
 		}
-		Delimiter::End => {
-			v.push("}".into());
+		Delimiter::End(e) => {
+			v.push(e.get_end().to_owned());
 			// parse here
 			let t = v.join("");
-            v.clear();
-            println!("parsing: {}", &t);
+			v.clear();
+			println!("parsing: {}", &t);
 			Some(serde_json::from_str::<T>(&t))
 		}
 		// should never arrive here
 		Delimiter::Stop => None,
 		// should never arrive here
 		Delimiter::Skip => None,
-		Delimiter::Start => {
-			v.push("{".into());
+		Delimiter::Start(e) => {
+			v.push(e.get_start().to_owned());
 			None
 		}
 	})
 }
 
 #[derive(PartialEq, Debug)]
-pub enum Delimiter {
+enum StructType {
+    Map, Array
+}
+
+impl StructType {
+    fn get_start(&self) -> &str {
+        match self {
+            Self::Array => "[",
+            Self::Map => "{",
+        }
+    }
+    fn get_end(&self) -> &str {
+        match self {
+            Self::Array => "]",
+            Self::Map => "}",
+        }
+    }
+}
+#[derive(PartialEq, Debug)]
+enum Delimiter {
 	Stop,
 	Item(String),
-	End,
+	End(StructType),
 	Skip,
-	Start,
+	Start(StructType),
 }
 
 #[derive(PartialEq, Debug, Copy, Clone)]
@@ -69,7 +88,7 @@ fn stack_as_path(v: &[String]) -> String {
 const DEBUG: bool = true;
 
 /// will only support the stream loading of an array of object under a object key chain, like "a.b.c"
-/// c containing the objects of type T
+/// does not support delimiting a struct of type array for now
 fn iter_delimiters(
 	iterator: impl Iterator<Item = String> + 'static,
 	prefix: String,
@@ -78,7 +97,7 @@ fn iter_delimiters(
 	let mut current_key = String::new();
 
 	let mut in_key = false;
-	let object_nesting = 0;
+	let mut object_nesting = 0;
 	let mut started = false;
 	let mut state = State::None;
 	// only handle when inside the returned value
@@ -108,35 +127,44 @@ fn iter_delimiters(
             }
 
             // if we are in the searched key
+            // TODO: skip useless characters maybe
             if in_key {
                 // end of parsing, skip the rest of the stream
                 if c == "[" {
                     array_nesting += 1;
                 }
 
-
-                if c == "]" && array_nesting == 1 {
-                    in_key = false;
-                    return Delimiter::Stop;
-                } else {
-                    if c == "}" && object_nesting == 0 {
-                        started = false;
-                        return Delimiter::End;
-                    }
-                    if c == "{" && object_nesting == 0 {
-                        started = true;
-                        return Delimiter::Start;
-                    }
-                    if c == "]" {
-                        array_nesting -= 1;
-                    }
-
-                    if started {
-                        return Delimiter::Item(c);
-                    } else {
-                        return Delimiter::Skip;
+                if c == "]" {
+                    array_nesting -= 1;
+                    
+                    if array_nesting == 0 {
+                        in_key = false;
+                        return Delimiter::Stop;
                     }
                 }
+
+                if c == "}" {
+                    object_nesting -= 1;
+                    if object_nesting == 0 {
+                        started = false;
+                        return Delimiter::End(StructType::Map);
+                    }
+                }
+                
+                if c == "{"  {
+                    object_nesting += 1;
+                    if object_nesting == 1 {
+                        started = true;
+                        return Delimiter::Start(StructType::Map);
+                    }
+                }
+
+                if started {
+                    return Delimiter::Item(c);
+                } else {
+                    return Delimiter::Skip;
+                }
+                
             } else {
                 stack_dirty = false;
             }
@@ -294,17 +322,23 @@ mod tests {
 
 	build_on!("test.json");
 
-	#[test]
-	fn test_nominal() {
-		let prefix = "root.items";
+
+    fn load_as_chars() -> impl Iterator<Item = String> {
 		let f = File::open("./src/test.json").expect("failed to read test file");
 		let reader = BufReader::new(f);
 		// let reader = buffered(f, 10);
 		let i = reader
 			.lines()
 			.flat_map(|l| l.unwrap().chars().map(|e| e.to_string()).collect::<Vec<_>>());
+        return i;
+    }
+
+	#[test]
+	fn test_nominal() {
+        let prefix = "root.items";
 		let mut count = 0;
-		for (index, i) in stream_read_items_at::<V>(i, String::from(prefix)).enumerate() {
+        let chars = load_as_chars();
+		for (index, i) in stream_read_items_at::<V>(chars, String::from(prefix)).enumerate() {
 			match i {
 				Ok(value) => {
 					println!("{:?}", &value);
@@ -323,4 +357,31 @@ mod tests {
 		}
 		assert!(count == 2);
 	}
+
+    // type Arr = Vec<u32>;
+
+    // #[test]
+	// fn test_nominal_array() {
+    //     let prefix = "array";
+	// 	let mut count = 0;
+    //     let chars = load_as_chars();
+	// 	for (index, i) in stream_read_items_at::<Arr>(chars, String::from(prefix)).enumerate() {
+	// 		match i {
+	// 			Ok(value) => {
+	// 				println!("{:?}", &value);
+	// 				count += 1;
+	// 				// if index == 0 {
+	// 				// 	assert!(value == "hello1");
+	// 				// }
+	// 				// if index == 1 {
+	// 				// 	assert!(value == "hello2");
+	// 				// }
+	// 			}
+	// 			Err(err) => {
+	// 				panic!("Failed to parse item: {}", err);
+	// 			}
+	// 		}
+	// 	}
+	// 	assert!(count == 2);
+	// }
 }
