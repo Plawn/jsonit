@@ -7,16 +7,11 @@
             {
                 "name": "hello1",
                 "keb": "hello1",
-                "obj": {
-                    "e": []
-                }
+                "e": 0
             },
             {
                 "name": "hello2",
-                "keb": "hello1",
-                "obj": {
-                    "e": []
-                }
+                "keb": "hello1"
             }
         ]
     },
