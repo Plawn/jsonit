@@ -59,7 +59,7 @@ enum State {
     // Escape,
 }
 
-fn stack_as_path(v: &Vec<String>) -> String {
+fn stack_as_path(v: &[String]) -> String {
     v.join(".")
 }
 
@@ -243,8 +243,8 @@ where
     T: DeserializeOwned,
 {
     let r1 = iter_delimiters(iterator, prefix);
-    let r2 = fold_and_parse::<T>(r1);
-    return r2;
+    
+    fold_and_parse::<T>(r1)
 }
 
 #[cfg(test)]
