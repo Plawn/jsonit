@@ -15,6 +15,8 @@ where
 			v.push("}".into());
 			// parse here
 			let t = v.join("");
+            v.clear();
+            println!("parsing: {}", &t);
 			Some(serde_json::from_str::<T>(&t))
 		}
 		// should never arrive here
@@ -22,7 +24,6 @@ where
 		// should never arrive here
 		Delimiter::Skip => None,
 		Delimiter::Start => {
-			v.clear();
 			v.push("{".into());
 			None
 		}
@@ -65,7 +66,7 @@ fn stack_as_path(v: &[String]) -> String {
 	v.join(".")
 }
 
-const DEBUG: bool = false;
+const DEBUG: bool = true;
 
 /// will only support the stream loading of an array of object under a object key chain, like "a.b.c"
 /// c containing the objects of type T
@@ -81,7 +82,7 @@ fn iter_delimiters(
 	let mut started = false;
 	let mut state = State::None;
 	// only handle when inside the returned value
-	let array_nesting = 0;
+	let mut array_nesting = 0;
 	let mut stack_dirty = false;
 	let mut escape = false;
 
@@ -92,25 +93,29 @@ fn iter_delimiters(
             // not pretty
             if DEBUG {
                 println!(
-                    "| {} | key {} | state {:?} | dirty {}",
+                    "| {} | key {} | state {:?} | array nesting {}",
                     c,
                     stack_as_path(&key_stack),
                     &state,
-                    stack_dirty,
+                    array_nesting
                 );
             }
 
             // avoid testing the key many times
             if stack_dirty && stack_as_path(&key_stack) == prefix {
+                stack_dirty = false;
                 in_key = true;
             }
 
             // if we are in the searched key
             if in_key {
                 // end of parsing, skip the rest of the stream
-                stack_dirty = false;
-                in_key = true;
-                if c == "]" && array_nesting == 0 {
+                if c == "[" {
+                    array_nesting += 1;
+                }
+
+
+                if c == "]" && array_nesting == 1 {
                     in_key = false;
                     return Delimiter::Stop;
                 } else {
@@ -122,6 +127,10 @@ fn iter_delimiters(
                         started = true;
                         return Delimiter::Start;
                     }
+                    if c == "]" {
+                        array_nesting -= 1;
+                    }
+
                     if started {
                         return Delimiter::Item(c);
                     } else {

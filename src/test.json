@@ -7,15 +7,17 @@
             {
                 "name": "hello1",
                 "keb": "hello1",
-                "e": 0
+                "e": [0],
+                "a": [[[[[[]]]]]]
             },
             {
+                "a": [[[[[[]]]]]],
                 "name": "hello2",
                 "keb": "hello1"
             }
         ]
     },
     "oth": {
-        "items": {} 
+        "items": {"a":[]} 
     }
 }
