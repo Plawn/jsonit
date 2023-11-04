@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2021"
 description = "Parse Json Items using iterators"
 license = "Apache-2.0"
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+homepage = "https://github.com/Plawn/jsonit"
+
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"]}
