@@ -2,37 +2,34 @@ use {anyhow::Result as InternalResult, serde::de::DeserializeOwned, std::io::Rea
 
 #[cfg(test)]
 mod test {
-    use anyhow::Result as InternalResult;
+	use anyhow::Result as InternalResult;
 
-    use log::info;
+	use log::info;
 
-    use crate::reader::{init_logging, JsonSeqIterator};
+	use crate::reader::{init_logging, JsonSeqIterator};
 
+	#[test]
+	fn reader() -> InternalResult<()> {
+		init_logging(log::LevelFilter::Debug).unwrap();
 
-    #[test]
-    fn reader() -> InternalResult<()> {
-        init_logging(log::LevelFilter::Debug).unwrap();
-    
-        #[derive(Debug, serde_derive::Deserialize)]
-        struct S {
-            b: i32,
-        }
+		#[derive(Debug, serde_derive::Deserialize)]
+		struct S {
+			b: i32,
+		}
 
-        let reader = r#"{"a": ["deb", "ded"]}"#.as_bytes();
-    
-        // does not handle the number for the moment being
-        let iterator = JsonSeqIterator::new(reader, ".a");
-    
-        for res in iterator {
-            let item: String = res?;
-            info!("{:?}", item);
-        }
-    
-        Ok(())
-    }
+		let reader = r#"{"a": [ 1 ,2 , 5,   4 ] }"#.as_bytes();
+
+		// does not handle the number for the moment being
+		let iterator = JsonSeqIterator::new(reader, ".a");
+
+		for res in iterator {
+			let item: i32 = res?;
+			info!("{:?}", item);
+		}
+
+		Ok(())
+	}
 }
-
-
 
 struct JsonSeqIterator<'a, R, O> {
 	state: State<'a>,
@@ -60,8 +57,16 @@ impl<'a, R: Read, O: DeserializeOwned> JsonSeqIterator<'a, R, O> {
 		Ok(buf[0])
 	}
 
-	fn deserialize_one_item(&mut self) -> InternalResult<O> {
-		O::deserialize(&mut serde_json::Deserializer::from_reader(&mut self.reader)).map_err(|e| e.into())
+	fn deserialize_one_item(&mut self, v: Option<u8>) -> InternalResult<O> {
+		if let Some(w) = v {
+			let r = &[w][..];
+			O::deserialize(&mut serde_json::Deserializer::from_reader(
+				&mut r.chain(self.reader.by_ref()),
+			))
+			.map_err(|e| e.into())
+		} else {
+			O::deserialize(&mut serde_json::Deserializer::from_reader(&mut self.reader)).map_err(|e| e.into())
+		}
 	}
 }
 
@@ -76,7 +81,7 @@ impl<'a, R: Read, O: DeserializeOwned> Iterator for JsonSeqIterator<'_, R, O> {
 						Err(e) => return Some(Err(e)),
 						Ok(b'[') => {
 							self.state = State::Started;
-							return Some(self.deserialize_one_item());
+							return Some(self.deserialize_one_item(None));
 						}
 						Ok(_) => {
 							// Wait until we find our inner array
@@ -94,13 +99,20 @@ impl<'a, R: Read, O: DeserializeOwned> Iterator for JsonSeqIterator<'_, R, O> {
 						}
 						b',' => {
 							// Parse with serde_json
-							Some(self.deserialize_one_item())
+							Some(self.deserialize_one_item(None))
 						}
 						w => {
 							if w.is_ascii_whitespace() {
 								continue;
+							} else if w.is_ascii_digit() {
+								// handle serde eating one too many char
+								// deserialyze number
+								Some(self.deserialize_one_item(Some(w)))
+							} else if c == b'}' || c == b']' {
+								// suppose end
+								None
 							} else {
-								Some(Err(anyhow::anyhow!("Unexpected character: {}", char::from(w))))
+								Some(Err(anyhow::anyhow!("[JsonIt] Unexpected character: {}", char::from(w))))
 							}
 						}
 					},

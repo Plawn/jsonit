@@ -322,7 +322,7 @@ pub fn stream_read_items_at<T>(
 where
 	T: DeserializeOwned,
 {
-    let (prepared_prefix) = make_prefix(prefix);
+    let prepared_prefix = make_prefix(prefix);
 	let r1 = iter_delimiters(iterator, prepared_prefix);
 
 	fold_and_parse::<T>(r1)
@@ -353,7 +353,7 @@ impl<R: Read> Iterator for ReaderIter<R> {
 
 #[cfg(test)]
 mod tests {
-	use std::{fs::File, io::BufRead, io::BufReader};
+	use std::fs::File;
 
 	use serde::Deserialize;
 
@@ -367,7 +367,7 @@ mod tests {
 	}
 
 	#[derive(Deserialize, Debug)]
-	struct V {
+	struct Value {
 		name: String,
 		op: Vec<Op>,
 	}
@@ -389,7 +389,7 @@ mod tests {
 		let prefix = "root.items";
 		let mut count = 0;
 		let chars = load_as_chars();
-		for (index, i) in stream_read_items_at::<V>(chars, prefix).enumerate() {
+		for (index, i) in stream_read_items_at::<Value>(chars, prefix).enumerate() {
 			match i {
 				Ok(value) => {
 					println!("{:?}", &value);
@@ -411,14 +411,12 @@ mod tests {
 		assert!(count == 2);
 	}
 
-	type Arr = Vec<u32>;
-
 	#[test]
 	fn test_nominal_array() {
 		let prefix = "array";
 		let mut count = 0;
 		let chars = load_as_chars();
-		for (_, i) in stream_read_items_at::<Arr>(chars, prefix).enumerate() {
+		for (_, i) in stream_read_items_at::<Vec<u32>>(chars, prefix).enumerate() {
 			match i {
 				Ok(value) => {
 					println!("{:?}", &value);
