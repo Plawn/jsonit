@@ -117,7 +117,7 @@ fn iter_delimiters(
 	// Keeps state if the next character is escaped
 	let mut escape = false;
 
-	return iterator
+	iterator
 		.map(move |s| {
 			let c = s;
 
@@ -297,15 +297,14 @@ fn iter_delimiters(
 			};
 			Delimiter::Skip
 		})
-		.take_while(|e| *e != Delimiter::Stop);
+		.take_while(|e| *e != Delimiter::Stop)
 }
 
 fn make_prefix(prefix: &str) -> Vec<u8> {
-	let e = prefix.split(".");
+	let e = prefix.split('.');
 	let r = e
 		.map(|e| e.as_bytes())
-		.map(|e| e.to_owned())
-		.flatten()
+		.flat_map(|e| e.to_owned())
 		.collect::<Vec<u8>>();
 	r
 }
@@ -347,7 +346,7 @@ impl<'a, R: Read> ReaderIter<R> {
 impl<R: Read> Iterator for ReaderIter<R> {
 	type Item = InternalResult<u8>;
 	fn next(&mut self) -> Option<Self::Item> {
-		return Some(self.next_char());
+		Some(self.next_char())
 	}
 }
 

@@ -74,7 +74,7 @@ impl<'a, R: Read, O: DeserializeOwned> Iterator for JsonSeqIterator<'_, R, O> {
 	type Item = InternalResult<O>;
 	fn next(&mut self) -> Option<Self::Item> {
 		match self.state {
-			State::NotStarted { path_to_look_for } => {
+			State::NotStarted { path_to_look_for: _ } => {
 				// TODO advance the reader to the path. As a stub:
 				loop {
 					match self.next_char() {
