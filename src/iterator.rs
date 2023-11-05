@@ -15,12 +15,9 @@ where
 		}
 		Delimiter::End(e) => {
 			v.push(e.get_end());
-			// parse here
-			// let t = v.join("");
-			
 			let r = Some(serde_json::from_slice::<T>(&v));
-            v.clear();
-            r
+			v.clear();
+			r
 		}
 		// should never arrive here
 		Delimiter::Stop => panic!("Hum, we should never be here, got stop"),
@@ -303,16 +300,14 @@ fn iter_delimiters(
 		.take_while(|e| *e != Delimiter::Stop);
 }
 
-fn make_prefix(prefix: &str) -> (Vec<u8>, usize) {
+fn make_prefix(prefix: &str) -> Vec<u8> {
 	let e = prefix.split(".");
 	let r = e
 		.map(|e| e.as_bytes())
-		.map(|e| {
-			e.to_owned()
-		})
+		.map(|e| e.to_owned())
 		.flatten()
-        .collect::<Vec<u8>>();
-	(r, 0)
+		.collect::<Vec<u8>>();
+	r
 }
 
 /// Returns an iterator returning serde parsed struct when consumed
@@ -322,12 +317,13 @@ fn make_prefix(prefix: &str) -> (Vec<u8>, usize) {
 ///
 pub fn stream_read_items_at<T>(
 	iterator: impl Iterator<Item = u8> + 'static,
-	prefix: Vec<u8>,
+	prefix: &str,
 ) -> impl Iterator<Item = serde_json::Result<T>>
 where
 	T: DeserializeOwned,
 {
-	let r1 = iter_delimiters(iterator, prefix);
+    let (prepared_prefix) = make_prefix(prefix);
+	let r1 = iter_delimiters(iterator, prepared_prefix);
 
 	fold_and_parse::<T>(r1)
 }
@@ -392,9 +388,8 @@ mod tests {
 	fn test_nominal() {
 		let prefix = "root.items";
 		let mut count = 0;
-		let (prepared_prefix, expected) = make_prefix(prefix);
 		let chars = load_as_chars();
-		for (index, i) in stream_read_items_at::<V>(chars, prepared_prefix).enumerate() {
+		for (index, i) in stream_read_items_at::<V>(chars, prefix).enumerate() {
 			match i {
 				Ok(value) => {
 					println!("{:?}", &value);
@@ -422,9 +417,8 @@ mod tests {
 	fn test_nominal_array() {
 		let prefix = "array";
 		let mut count = 0;
-		let (prepared_prefix, expected) = make_prefix(prefix);
 		let chars = load_as_chars();
-		for (_, i) in stream_read_items_at::<Arr>(chars, prepared_prefix).enumerate() {
+		for (_, i) in stream_read_items_at::<Arr>(chars, prefix).enumerate() {
 			match i {
 				Ok(value) => {
 					println!("{:?}", &value);
