@@ -328,7 +328,7 @@ where
 	fold_and_parse::<T>(r1)
 }
 
-struct ReaderIter<R> {
+pub struct ReaderIter<R> {
 	reader: R,
 }
 
@@ -353,7 +353,7 @@ impl<R: Read> Iterator for ReaderIter<R> {
 
 #[cfg(test)]
 mod tests {
-	use std::fs::File;
+	use std::{fs::File, io::BufReader};
 
 	use serde::Deserialize;
 
@@ -380,7 +380,8 @@ mod tests {
 
 	fn load_as_chars() -> impl Iterator<Item = u8> {
 		let f = File::open("./src/test.json").expect("failed to read test file");
-		let reader = ReaderIter::new(f);
+		let b = BufReader::new(f);
+        let reader = ReaderIter::new(b);
 		reader.map(|e| e.expect("failed to read file"))
 	}
 
