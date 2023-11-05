@@ -17,13 +17,13 @@ mod test {
 			b: i32,
 		}
 
-		let reader = r#"{"a": [ 1 ,2 , 5,   4 ] }"#.as_bytes();
+		let reader = r#"{"a": [ 1 ,2 , 5,   4, null,  null,null    ,   null ] }"#.as_bytes();
 
 		// does not handle the number for the moment being
 		let iterator = JsonSeqIterator::new(reader, ".a");
 
 		for res in iterator {
-			let item: i32 = res?;
+			let item: Option<i32> = res?;
 			info!("{:?}", item);
 		}
 
@@ -104,11 +104,11 @@ impl<'a, R: Read, O: DeserializeOwned> Iterator for JsonSeqIterator<'_, R, O> {
 						w => {
 							if w.is_ascii_whitespace() {
 								continue;
-							} else if w.is_ascii_digit() {
+							} else if w.is_ascii_digit() || w == b'n' { // n for null
 								// handle serde eating one too many char
 								// deserialyze number
 								Some(self.deserialize_one_item(Some(w)))
-							} else if c == b'}' || c == b']' {
+							} else if w == b'}' || w == b']' {
 								// suppose end
 								None
 							} else {
