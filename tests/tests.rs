@@ -68,11 +68,11 @@ use std::{fs::File, io::BufReader};
 					count += 1;
 					if index == 0 {
 						assert!(value.name == "hello1");
-						assert!(value.op.get(0).unwrap().a == "a");
+						assert!(value.op.first().unwrap().a == "a");
 					}
 					if index == 1 {
 						assert!(value.name == "hello2");
-						assert!(value.op.get(0).unwrap().a == "a");
+						assert!(value.op.first().unwrap().a == "a");
 					}
 				}
 				Err(err) => {

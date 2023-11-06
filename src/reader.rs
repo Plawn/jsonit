@@ -84,7 +84,7 @@ impl<'a, R: Read, O: DeserializeOwned> Iterator for JsonSeqIterator<'_, R, O> {
 						Err(e) => return Some(Err(e)),
 						// Ok(b'[') => {}
 						Ok(c) => {
-							if stack_dirty && compare_stack_reader(&key_stack, &path_to_look_for) {
+							if stack_dirty && compare_stack_reader(&key_stack, path_to_look_for) {
 								self.state = State::Started;
 								// advance until we get the array
 								let r = loop {
