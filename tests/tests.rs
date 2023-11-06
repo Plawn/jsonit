@@ -150,7 +150,7 @@ use std::{fs::File, io::BufReader};
 
 	#[test]
 	fn reader_struct() -> InternalResult<()> {
-		#[derive(Debug, serde_derive::Deserialize)]
+		#[derive(Debug, Deserialize)]
 		struct S {
 			b: i32,
 		}
