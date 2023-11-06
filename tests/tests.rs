@@ -114,9 +114,8 @@ use std::{fs::File, io::BufReader};
 		setup_logging();
 		let reader = data.as_bytes();
 		let prefix  = make_path(at);
-		let e = &prefix.deref();
 		// does not handle the number for the moment being
-		let iterator = JsonSeqIterator::new(reader, e);
+		let iterator = JsonSeqIterator::new(reader, &prefix);
 
 		for res in iterator {
 			let item: T = res?;
@@ -128,9 +127,7 @@ use std::{fs::File, io::BufReader};
 
 	fn test_read_with_type_at<T: DeserializeOwned + std::fmt::Debug, R: Read, >(reader: R, at: &str) -> InternalResult<()> {
 		setup_logging();
-		let t  = make_path(at);
-		let prefix = t.deref();
-
+		let prefix  = make_path(at);
 		// does not handle the number for the moment being
 		let iterator = JsonSeqIterator::new(reader, &prefix);
 

@@ -16,7 +16,7 @@ enum State<'a> {
 pub type PrefixPath<'a> =  &'a [u8];
 
 impl<'a, R: Read, O: DeserializeOwned> JsonSeqIterator<'a, R, O> {
-	pub fn new(reader: R, path_to_look_for: &'a PrefixPath) -> Self {
+	pub fn new(reader: R, path_to_look_for: &'a [u8]) -> Self {
 		Self {
 			state: State::NotStarted { path_to_look_for },
 			reader,
