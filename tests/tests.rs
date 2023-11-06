@@ -171,10 +171,10 @@ use std::{fs::File, io::BufReader};
 		test_read_with_type_at::<Value, _>(reader, "root.items")
 	}
 
-	// #[test]
-	// fn reader_from_read_simple() -> InternalResult<()> {
-	// 	let f: File = File::open("./tests/simple.json").expect("failed to read test file");
-	// 	let reader = BufReader::new(f);
-	// 	test_read_with_type_at::<Option<String>, _>(reader, "a")
-	// }
+	#[test]
+	fn reader_from_read_simple() -> InternalResult<()> {
+		let f: File = File::open("./tests/simple.json").expect("failed to read test file");
+		let reader = BufReader::new(f);
+		test_read_with_type_at::<Option<String>, _>(reader, "a")
+	}
 }
