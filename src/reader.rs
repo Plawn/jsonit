@@ -1,37 +1,7 @@
 use {anyhow::Result as InternalResult, serde::de::DeserializeOwned, std::io::Read};
 
-#[cfg(test)]
-mod test {
-	use anyhow::Result as InternalResult;
 
-	use log::info;
-
-	use crate::reader::{init_logging, JsonSeqIterator};
-
-	#[test]
-	fn reader() -> InternalResult<()> {
-		init_logging(log::LevelFilter::Debug).unwrap();
-
-		#[derive(Debug, serde_derive::Deserialize)]
-		struct S {
-			b: i32,
-		}
-
-		let reader = r#"{"a": [ 1 ,2 , 5,   4, null,  null,null    ,   null ] }"#.as_bytes();
-
-		// does not handle the number for the moment being
-		let iterator = JsonSeqIterator::new(reader, ".a");
-
-		for res in iterator {
-			let item: Option<i32> = res?;
-			info!("{:?}", item);
-		}
-
-		Ok(())
-	}
-}
-
-struct JsonSeqIterator<'a, R, O> {
+pub struct JsonSeqIterator<'a, R, O> {
 	state: State<'a>,
 	reader: R,
 	output_type: std::marker::PhantomData<O>,
@@ -121,22 +91,4 @@ impl<'a, R: Read, O: DeserializeOwned> Iterator for JsonSeqIterator<'_, R, O> {
 			State::Ended => None,
 		}
 	}
-}
-
-fn init_logging(level: log::LevelFilter) -> Result<(), fern::InitError> {
-	let colors = fern::colors::ColoredLevelConfig::default().info(fern::colors::Color::Blue);
-	fern::Dispatch::new()
-		.format(move |out, message, record| {
-			out.finish(format_args!(
-				"{}[{}][{}] {message}",
-				chrono::Local::now().format("[%Y-%m-%d][%H:%M:%S]"),
-				record.target(),
-				colors.color(record.level()),
-			))
-		})
-		.level(log::LevelFilter::Debug)
-		.level_for(env!("CARGO_PKG_NAME"), level)
-		.chain(std::io::stdout())
-		.apply()?;
-	Ok(())
 }
