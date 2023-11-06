@@ -1,6 +1,7 @@
 use std::io::Read;
 use anyhow::Result as InternalResult;
 
+
 pub fn make_prefix(prefix: &str) -> Vec<u8> {
 	let e = prefix.split('.');
 	
@@ -9,6 +10,15 @@ pub fn make_prefix(prefix: &str) -> Vec<u8> {
 		.flat_map(|e| e.to_owned())
 		.collect::<Vec<u8>>()
 }
+
+pub fn make_path<'a>(prefix: &str) -> Box<[u8]>  {
+	prefix.split('.')
+		.map(|e| e.as_bytes())
+		.flat_map(|e| e.to_owned())
+		.collect::<Vec<u8>>()
+		.into_boxed_slice()
+}
+
 
 pub struct ReaderIter<R> {
 	reader: R,
@@ -35,6 +45,15 @@ impl<R: Read> Iterator for ReaderIter<R> {
 
 
 pub fn compare_stack(stack: &Vec<Vec<u8>>, prefix: &Vec<u8>) -> bool {
+	stack
+		.iter()
+		.flatten()
+		.zip(prefix.iter())
+		.take_while(|(a, b)| a == b)
+		.count() == prefix.len()
+}
+
+pub fn compare_stack_reader(stack: &Vec<Vec<u8>>, prefix: &[u8]) -> bool {
 	stack
 		.iter()
 		.flatten()

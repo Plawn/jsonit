@@ -1,11 +1,14 @@
 #[cfg(test)]
 mod tests {
-	use std::{fs::File, io::BufReader};
+	use std::io::Read;
+use std::ops::Deref;
+use std::{fs::File, io::BufReader};
 
 	use std::sync::Once;
+	
 
 	static INIT: Once = Once::new();
-	use jsonit::{stream_read_items_at, JsonSeqIterator, ReaderIter};
+	use jsonit::{stream_read_items_at, JsonSeqIterator, ReaderIter, make_path};
 	use serde::de::DeserializeOwned;
 	use serde::Deserialize;
 
@@ -107,12 +110,29 @@ mod tests {
 		INIT.call_once(|| init_logging(log::LevelFilter::Debug).unwrap());
 	}
 
-	fn test_string_with_type<T: DeserializeOwned + std::fmt::Debug>(data: &str) -> InternalResult<()> {
+	fn test_string_with_type_at<T: DeserializeOwned + std::fmt::Debug>(data: &str, at: &str) -> InternalResult<()> {
 		setup_logging();
 		let reader = data.as_bytes();
+		let prefix  = make_path(at);
+		let e = &prefix.deref();
+		// does not handle the number for the moment being
+		let iterator = JsonSeqIterator::new(reader, e);
+
+		for res in iterator {
+			let item: T = res?;
+			info!("{:?}", item);
+		}
+
+		Ok(())
+	}
+
+	fn test_read_with_type_at<T: DeserializeOwned + std::fmt::Debug, R: Read, >(reader: R, at: &str) -> InternalResult<()> {
+		setup_logging();
+		let t  = make_path(at);
+		let prefix = t.deref();
 
 		// does not handle the number for the moment being
-		let iterator = JsonSeqIterator::new(reader, ".a");
+		let iterator = JsonSeqIterator::new(reader, &prefix);
 
 		for res in iterator {
 			let item: T = res?;
@@ -125,7 +145,7 @@ mod tests {
 	#[test]
 	fn reader_number_option() -> InternalResult<()> {
 		let data = r#"{"a": [ [1,2,null]] }"#;
-		test_string_with_type::<Vec<Option<i32>>>(data)
+		test_string_with_type_at::<Vec<Option<i32>>>(data, "a")
 	}
 
 	#[test]
@@ -135,12 +155,26 @@ mod tests {
 			b: i32,
 		}
 		let data = r#"{"a": [{"b": 1}, {"b" : 2}]] }"#;
-		test_string_with_type::<S>(data)
+		test_string_with_type_at::<S>(data, "a")
 	}
 
 	#[test]
 	fn reader_string_option() -> InternalResult<()> {
 		let data = r#"{"a": [ "deb","sneb",null] }"#;
-		test_string_with_type::<Option<String>>(data)
+		test_string_with_type_at::<Option<String>>(data, "a")
 	}
+
+	#[test]
+	fn reader_from_read() -> InternalResult<()> {
+		let f: File = File::open("./tests/test.json").expect("failed to read test file");
+		let reader = BufReader::new(f);
+		test_read_with_type_at::<Value, _>(reader, "root.items")
+	}
+
+	// #[test]
+	// fn reader_from_read_simple() -> InternalResult<()> {
+	// 	let f: File = File::open("./tests/simple.json").expect("failed to read test file");
+	// 	let reader = BufReader::new(f);
+	// 	test_read_with_type_at::<Option<String>, _>(reader, "a")
+	// }
 }
