@@ -2,8 +2,12 @@
 mod tests {
 	use std::{fs::File, io::BufReader};
 
+    use std::sync::Once;
+
+static INIT: Once = Once::new();
 	use jsonit::{stream_read_items_at, ReaderIter, JsonSeqIterator};
 	use serde::Deserialize;
+use serde::de::DeserializeOwned;
 
 	use super::*;
 
@@ -102,27 +106,44 @@ mod tests {
 
 	use log::info;
 
-	
-	#[test]
-	fn reader() -> InternalResult<()> {
-		init_logging(log::LevelFilter::Debug).unwrap();
+	fn setup_logging() {
+		INIT.call_once(||init_logging(log::LevelFilter::Debug).unwrap());
+	}
 
-		#[derive(Debug, serde_derive::Deserialize)]
-		struct S {
-			b: i32,
-		}
-
-		let reader = r#"{"a": [ [1,2,null]] }"#.as_bytes();
+	fn test_string_with_type<T: DeserializeOwned + std::fmt::Debug>(data: &str) -> InternalResult<()> {
+		setup_logging();
+		let reader = data.as_bytes();
 
 		// does not handle the number for the moment being
 		let iterator = JsonSeqIterator::new(reader, ".a");
 
 		for res in iterator {
-			let item: Vec<Option<i32>> = res?;
+			let item: T = res?;
 			info!("{:?}", item);
 		}
 
 		Ok(())
 	}
+	
+	#[test]
+	fn reader_number_option() -> InternalResult<()> {
+		let data = r#"{"a": [ [1,2,null]] }"#;
+		test_string_with_type::<Vec<Option<i32>>>(data)
+	}
 
+    #[test]
+	fn reader_struct() -> InternalResult<()> {
+		#[derive(Debug, serde_derive::Deserialize)]
+		struct S {
+			b: i32,
+		}
+		let data = r#"{"a": [{"b": 1}, {"b" : 2}]] }"#;
+		test_string_with_type::<S>(data)
+	}
+
+    #[test]
+	fn reader_string_option() -> InternalResult<()> {
+		let data = r#"{"a": [ "deb","sneb",null] }"#;
+		test_string_with_type::<Option<String>>(data)
+	}
 }
