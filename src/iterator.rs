@@ -1,6 +1,7 @@
-use anyhow::Result as InternalResult;
 use serde::de::DeserializeOwned;
-use std::io::Read;
+
+
+use crate::utils::{make_prefix, compare_stack};
 
 fn fold_and_parse<T>(iterator: impl Iterator<Item = Delimiter>) -> impl Iterator<Item = serde_json::Result<T>>
 where
@@ -77,15 +78,6 @@ enum State {
 	/// We expect ":" or whitespace
 	ExpectPoints,
 	None,
-}
-
-fn compare_stack(stack: &Vec<Vec<u8>>, prefix: &Vec<u8>) -> bool {
-	stack
-		.iter()
-		.flatten()
-		.zip(prefix.iter())
-		.take_while(|(a, b)| a == b)
-		.count() == prefix.len()
 }
 
 const DEBUG: bool = false;
@@ -300,15 +292,6 @@ fn iter_delimiters(
 		.take_while(|e| *e != Delimiter::Stop)
 }
 
-fn make_prefix(prefix: &str) -> Vec<u8> {
-	let e = prefix.split('.');
-	
-	e
-		.map(|e| e.as_bytes())
-		.flat_map(|e| e.to_owned())
-		.collect::<Vec<u8>>()
-}
-
 /// Returns an iterator returning serde parsed struct when consumed
 ///
 ///
@@ -327,25 +310,3 @@ where
 	fold_and_parse::<T>(r1)
 }
 
-pub struct ReaderIter<R> {
-	reader: R,
-}
-
-impl<'a, R: Read> ReaderIter<R> {
-	pub fn new(reader: R) -> Self {
-		Self { reader }
-	}
-
-	pub fn next_char(&mut self) -> InternalResult<u8> {
-		let mut buf = [0_u8; 1];
-		self.reader.read_exact(&mut buf)?;
-		Ok(buf[0])
-	}
-}
-
-impl<R: Read> Iterator for ReaderIter<R> {
-	type Item = InternalResult<u8>;
-	fn next(&mut self) -> Option<Self::Item> {
-		Some(self.next_char())
-	}
-}
