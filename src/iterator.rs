@@ -302,11 +302,11 @@ fn iter_delimiters(
 
 fn make_prefix(prefix: &str) -> Vec<u8> {
 	let e = prefix.split('.');
-	let r = e
+	
+	e
 		.map(|e| e.as_bytes())
 		.flat_map(|e| e.to_owned())
-		.collect::<Vec<u8>>();
-	r
+		.collect::<Vec<u8>>()
 }
 
 /// Returns an iterator returning serde parsed struct when consumed

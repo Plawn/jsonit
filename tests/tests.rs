@@ -2,14 +2,12 @@
 mod tests {
 	use std::{fs::File, io::BufReader};
 
-    use std::sync::Once;
+	use std::sync::Once;
 
-static INIT: Once = Once::new();
-	use jsonit::{stream_read_items_at, ReaderIter, JsonSeqIterator};
+	static INIT: Once = Once::new();
+	use jsonit::{stream_read_items_at, JsonSeqIterator, ReaderIter};
+	use serde::de::DeserializeOwned;
 	use serde::Deserialize;
-use serde::de::DeserializeOwned;
-
-	use super::*;
 
 	/// in order to ensure retest when the json test file changes
 	macro_rules! build_on {
@@ -30,24 +28,23 @@ use serde::de::DeserializeOwned;
 
 	build_on!("test.json");
 
-    fn init_logging(level: log::LevelFilter) -> Result<(), fern::InitError> {
-        let colors = fern::colors::ColoredLevelConfig::default().info(fern::colors::Color::Blue);
-        fern::Dispatch::new()
-            .format(move |out, message, record| {
-                out.finish(format_args!(
-                    "{}[{}][{}] {message}",
-                    chrono::Local::now().format("[%Y-%m-%d][%H:%M:%S]"),
-                    record.target(),
-                    colors.color(record.level()),
-                ))
-            })
-            .level(log::LevelFilter::Debug)
-            .level_for(env!("CARGO_PKG_NAME"), level)
-            .chain(std::io::stdout())
-            .apply()?;
-        Ok(())
-    }
-    
+	fn init_logging(level: log::LevelFilter) -> Result<(), fern::InitError> {
+		let colors = fern::colors::ColoredLevelConfig::default().info(fern::colors::Color::Blue);
+		fern::Dispatch::new()
+			.format(move |out, message, record| {
+				out.finish(format_args!(
+					"{}[{}][{}] {message}",
+					chrono::Local::now().format("[%Y-%m-%d][%H:%M:%S]"),
+					record.target(),
+					colors.color(record.level()),
+				))
+			})
+			.level(log::LevelFilter::Debug)
+			.level_for(env!("CARGO_PKG_NAME"), level)
+			.chain(std::io::stdout())
+			.apply()?;
+		Ok(())
+	}
 
 	fn load_as_chars() -> impl Iterator<Item = u8> {
 		let f = File::open("./tests/test.json").expect("failed to read test file");
@@ -102,12 +99,12 @@ use serde::de::DeserializeOwned;
 		assert!(count == 8);
 	}
 
-    use anyhow::Result as InternalResult;
+	use anyhow::Result as InternalResult;
 
 	use log::info;
 
 	fn setup_logging() {
-		INIT.call_once(||init_logging(log::LevelFilter::Debug).unwrap());
+		INIT.call_once(|| init_logging(log::LevelFilter::Debug).unwrap());
 	}
 
 	fn test_string_with_type<T: DeserializeOwned + std::fmt::Debug>(data: &str) -> InternalResult<()> {
@@ -124,14 +121,14 @@ use serde::de::DeserializeOwned;
 
 		Ok(())
 	}
-	
+
 	#[test]
 	fn reader_number_option() -> InternalResult<()> {
 		let data = r#"{"a": [ [1,2,null]] }"#;
 		test_string_with_type::<Vec<Option<i32>>>(data)
 	}
 
-    #[test]
+	#[test]
 	fn reader_struct() -> InternalResult<()> {
 		#[derive(Debug, serde_derive::Deserialize)]
 		struct S {
@@ -141,7 +138,7 @@ use serde::de::DeserializeOwned;
 		test_string_with_type::<S>(data)
 	}
 
-    #[test]
+	#[test]
 	fn reader_string_option() -> InternalResult<()> {
 		let data = r#"{"a": [ "deb","sneb",null] }"#;
 		test_string_with_type::<Option<String>>(data)
