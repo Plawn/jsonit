@@ -13,7 +13,7 @@ enum State<'a> {
 	Ended,
 }
 
-pub type PrefixPath<'a> =  &'a [u8];
+pub type PrefixPath<'a> = &'a [u8];
 
 impl<'a, R: Read, O: DeserializeOwned> JsonSeqIterator<'a, R, O> {
 	pub fn new(reader: R, path_to_look_for: &'a [u8]) -> Self {
@@ -101,8 +101,13 @@ impl<'a, R: Read, O: DeserializeOwned> Iterator for JsonSeqIterator<'_, R, O> {
 										},
 									};
 								};
-								if r.is_ok() {
-									return Some(self.deserialize_one_item(None));
+								if let Ok(next) = self.next_char() {
+									if next == b']' {
+										return None;
+									}
+									if r.is_ok() {
+										return Some(self.deserialize_one_item(Some(next)));
+									}
 								}
 							}
 
