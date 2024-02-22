@@ -1,13 +1,12 @@
 #[cfg(test)]
 mod tests {
 	use std::io::Read;
-use std::{fs::File, io::BufReader};
+	use std::{fs::File, io::BufReader};
 
 	use std::sync::Once;
-	
 
 	static INIT: Once = Once::new();
-	use jsonit::{stream_read_items_at, JsonSeqIterator, ReaderIter, make_path};
+	use jsonit::{stream_read_items_at, JsonSeqIterator, ReaderIter};
 	use serde::de::DeserializeOwned;
 	use serde::Deserialize;
 
@@ -29,6 +28,8 @@ use std::{fs::File, io::BufReader};
 	}
 
 	build_on!("test.json");
+	build_on!("simple.json");
+	build_on!("test_confuse.json");
 
 	fn init_logging(level: log::LevelFilter) -> Result<(), fern::InitError> {
 		let colors = fern::colors::ColoredLevelConfig::default().info(fern::colors::Color::Blue);
@@ -112,7 +113,7 @@ use std::{fs::File, io::BufReader};
 	fn test_string_with_type_at<T: DeserializeOwned + std::fmt::Debug>(data: &str, at: &str) -> InternalResult<()> {
 		setup_logging();
 		let reader = data.as_bytes();
-		let prefix  = make_path(at);
+		let prefix = at.as_bytes();
 		// does not handle the number for the moment being
 		let iterator = JsonSeqIterator::new(reader, &prefix);
 
@@ -124,11 +125,13 @@ use std::{fs::File, io::BufReader};
 		Ok(())
 	}
 
-	fn test_read_with_type_at<T: DeserializeOwned + std::fmt::Debug, R: Read, >(reader: R, at: &str) -> InternalResult<()> {
+	fn test_read_with_type_at<T: DeserializeOwned + std::fmt::Debug, R: Read>(
+		reader: R,
+		at: &str,
+	) -> InternalResult<()> {
 		setup_logging();
-		let prefix  = make_path(at);
-		// does not handle the number for the moment being
-		let iterator = JsonSeqIterator::new(reader, &prefix);
+		let prefix = at.as_bytes();
+		let iterator = JsonSeqIterator::new(reader, prefix);
 
 		for res in iterator {
 			let item: T = res?;
@@ -136,6 +139,22 @@ use std::{fs::File, io::BufReader};
 		}
 
 		Ok(())
+	}
+
+	#[test]
+	fn test_stack_compare() {
+		let stack = vec!["root".as_bytes(), "items".as_bytes()];
+		let prefix = "root.items".as_bytes();
+		let res = stack.join(".".as_bytes()) == prefix;
+		assert!(res)
+	}
+
+	#[test]
+	fn test_stack_compare_fail() {
+		let stack = vec!["root".as_bytes(), "items".as_bytes()];
+		let prefix = "root.item".as_bytes();
+		let res = stack.join(".".as_bytes()) != prefix;
+		assert!(res)
 	}
 
 	#[test]
@@ -156,13 +175,41 @@ use std::{fs::File, io::BufReader};
 
 	#[test]
 	fn reader_string_option() -> InternalResult<()> {
-		let data = r#"{"a": [ "deb","sneb",null] }"#;
+		let data = r#"{"a": [ "deb","sneb",null                ] }"#;
 		test_string_with_type_at::<Option<String>>(data, "a")
 	}
 
 	#[test]
-	fn reader_from_read() -> InternalResult<()> {
+	fn reader_from_read_nested() -> InternalResult<()> {
 		test_read_with_type_at::<Value, _>(get_test_local_reader("./tests/test.json"), "root.items")
+	}
+
+	#[test]
+	fn reader_from_read_deep() -> InternalResult<()> {
+		test_read_with_type_at::<serde_json::Value, _>(get_test_local_reader("./tests/test_confuse.json"), "a.b.c")
+	}
+
+	#[test]
+	fn reader_confuse() -> InternalResult<()> {
+		setup_logging();
+		let prefix = "a.b.c".as_bytes();
+		let iterator = JsonSeqIterator::new(get_test_local_reader("./tests/test_confuse.json"), prefix);
+
+		for (i, res) in iterator.enumerate() {
+			let item: u32 = res?;
+			info!("{:?}", item);
+			if i == 0 {
+				assert!(item == 4);
+			}
+			if i == 1 {
+				assert!(item == 5);
+			}
+			if i == 2 {
+				assert!(item == 6);
+			}
+		}
+
+		Ok(())
 	}
 
 	fn get_test_file(path: &str) -> File {

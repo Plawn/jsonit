@@ -69,10 +69,9 @@ impl<'a, R: Read, O: DeserializeOwned> Iterator for JsonSeqIterator<'_, R, O> {
 		match self.state {
 			State::NotStarted { path_to_look_for } => {
 				// TODO advance the reader to the path. As a stub:
-				let mut key_stack: Vec<Vec<u8>> = vec![];
+				let mut key_stack: Vec<Box<[u8]>> = vec![];
 				// the current key where we parse the value
 				let mut current_key: Vec<u8> = vec![];
-				let mut stack_size = 0;
 				// keeps state of the parsing
 				let mut state = NotStartedState::None;
 				// prevents rebuilding the key stack without rebuilding it
@@ -83,33 +82,33 @@ impl<'a, R: Read, O: DeserializeOwned> Iterator for JsonSeqIterator<'_, R, O> {
 					match self.next_char() {
 						Err(e) => return Some(Err(e)),
 						Ok(c) => {
-							if stack_dirty
-								&& stack_size == path_to_look_for.len()
-								&& compare_stack_reader(&key_stack, path_to_look_for)
-							{
-								self.state = State::Started;
-								// advance until we get the array
-								let r = loop {
-									match self.next_char() {
-										// should have err
-										Err(e) => {
-											break Err(e);
-										}
-										Ok(c) => match c {
-											b'[' => break Ok(()),
-											_ => {
-												continue;
+							if stack_dirty {
+								stack_dirty = false;
+								if compare_stack_reader(&key_stack, path_to_look_for) {
+									self.state = State::Started;
+									// advance until we get the array
+									let r = loop {
+										match self.next_char() {
+											// should have err
+											Err(e) => {
+												break Err(e);
 											}
-										},
+											Ok(c) => match c {
+												b'[' => break Ok(()),
+												_ => {
+													continue;
+												}
+											},
+										};
 									};
-								};
-								if let Ok(next) = self.next_char() {
-									// handle if array is empty
-									if next == b']' {
-										return None;
-									}
-									if r.is_ok() {
-										return Some(self.deserialize_one_item(Some(next)));
+									if let Ok(next) = self.next_char() {
+										// handle if array is empty
+										if next == b']' {
+											return None;
+										}
+										if r.is_ok() {
+											return Some(self.deserialize_one_item(Some(next)));
+										}
 									}
 								}
 							}
@@ -120,8 +119,7 @@ impl<'a, R: Read, O: DeserializeOwned> Iterator for JsonSeqIterator<'_, R, O> {
 									if c == b'\"' && !escape {
 										state = NotStartedState::ExpectPoints;
 										// TODO: should avoid cloning
-										key_stack.push(current_key.clone());
-										stack_size += current_key.len();
+										key_stack.push(current_key.clone().into_boxed_slice());
 										current_key.clear();
 										stack_dirty = true;
 									} else {
@@ -134,10 +132,7 @@ impl<'a, R: Read, O: DeserializeOwned> Iterator for JsonSeqIterator<'_, R, O> {
 										ParseValueType::String => {
 											if c == b'\"' && !escape {
 												state = NotStartedState::ParseObject;
-												let elem = key_stack.pop();
-												if let Some(e) = elem {
-													stack_size -= e.len();
-												}
+												key_stack.pop();
 												stack_dirty = true;
 											}
 											if escape {
@@ -147,30 +142,21 @@ impl<'a, R: Read, O: DeserializeOwned> Iterator for JsonSeqIterator<'_, R, O> {
 										ParseValueType::Array => {
 											if c == b']' {
 												state = NotStartedState::ParseObject;
-												let elem = key_stack.pop();
-												if let Some(e) = elem {
-													stack_size -= e.len();
-												}
+												key_stack.pop();
 												stack_dirty = true;
 											}
 										}
 										ParseValueType::Number => {
 											if c == b',' {
 												state = NotStartedState::ParseObject;
-												let elem = key_stack.pop();
-												if let Some(e) = elem {
-													stack_size -= e.len();
-												}
+												key_stack.pop();
 												stack_dirty = true;
 											}
 										}
 										ParseValueType::Null => {
 											if c == b',' {
 												state = NotStartedState::ParseObject;
-												let elem = key_stack.pop();
-												if let Some(e) = elem {
-													stack_size -= e.len();
-												}
+												key_stack.pop();
 												stack_dirty = true;
 											}
 										}
@@ -206,10 +192,7 @@ impl<'a, R: Read, O: DeserializeOwned> Iterator for JsonSeqIterator<'_, R, O> {
 										state = NotStartedState::ParseObjectKey;
 									}
 									if c == b'}' {
-										let elem = key_stack.pop();
-										if let Some(e) = elem {
-											stack_size -= e.len();
-										}
+										key_stack.pop();
 										stack_dirty = true;
 									}
 								}

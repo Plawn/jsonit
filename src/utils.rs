@@ -11,15 +11,6 @@ pub fn make_prefix(prefix: &str) -> Vec<u8> {
 		.collect::<Vec<u8>>()
 }
 
-pub fn make_path(prefix: &str) -> Box<[u8]>  {
-	prefix.split('.')
-		.map(|e| e.as_bytes())
-		.flat_map(|e| e.to_owned())
-		.collect::<Vec<u8>>()
-		.into_boxed_slice()
-}
-
-
 pub struct ReaderIter<R> {
 	reader: R,
 }
@@ -53,11 +44,6 @@ pub fn compare_stack(stack: &[Vec<u8>], prefix: &Vec<u8>) -> bool {
 		.count() == prefix.len()
 }
 
-pub fn compare_stack_reader(stack: &[Vec<u8>], prefix: &[u8]) -> bool {
-	stack
-		.iter()
-		.flatten()
-		.zip(prefix.iter())
-		.take_while(|(a, b)| a == b)
-		.count() == prefix.len()
+pub fn compare_stack_reader(stack: &[Box<[u8]>], prefix: &[u8]) -> bool {
+	stack.join(".".as_bytes()) == prefix
 }
