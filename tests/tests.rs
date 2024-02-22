@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
 	use std::io::Read;
-use std::ops::Deref;
 use std::{fs::File, io::BufReader};
 
 	use std::sync::Once;
@@ -149,9 +148,9 @@ use std::{fs::File, io::BufReader};
 	fn reader_struct() -> InternalResult<()> {
 		#[derive(Debug, Deserialize)]
 		struct S {
-			b: i32,
+			_b: i32,
 		}
-		let data = r#"{"a": [{"b": 1}, {"b" : 2}]] }"#;
+		let data = r#"{"a": [{"_b": 1}, {"_b" : 2}]] }"#;
 		test_string_with_type_at::<S>(data, "a")
 	}
 
