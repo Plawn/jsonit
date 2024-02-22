@@ -162,22 +162,27 @@ use std::{fs::File, io::BufReader};
 
 	#[test]
 	fn reader_from_read() -> InternalResult<()> {
-		let f: File = File::open("./tests/test.json").expect("failed to read test file");
+		test_read_with_type_at::<Value, _>(get_test_local_reader("./tests/test.json"), "root.items")
+	}
+
+	fn get_test_file(path: &str) -> File {
+		let f: File = File::open(path).expect("failed to read test file");
+		f
+	}
+
+	fn get_test_local_reader(path: &str) -> impl Read {
+		let f = get_test_file(path);
 		let reader = BufReader::new(f);
-		test_read_with_type_at::<Value, _>(reader, "root.items")
+		reader
 	}
 
 	#[test]
 	fn reader_from_read_empty() -> InternalResult<()> {
-		let f: File = File::open("./tests/test.json").expect("failed to read test file");
-		let reader = BufReader::new(f);
-		test_read_with_type_at::<Value, _>(reader, "empty")
+		test_read_with_type_at::<Value, _>(get_test_local_reader("./tests/test.json"), "empty")
 	}
 
 	#[test]
 	fn reader_from_read_simple() -> InternalResult<()> {
-		let f: File = File::open("./tests/simple.json").expect("failed to read test file");
-		let reader = BufReader::new(f);
-		test_read_with_type_at::<Option<String>, _>(reader, "a")
+		test_read_with_type_at::<Option<String>, _>(get_test_local_reader("./tests/simple.json"), "a")
 	}
 }
