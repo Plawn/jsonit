@@ -28,22 +28,21 @@ impl<'a, R: Read, O: DeserializeOwned> JsonSeqIterator<'a, R, O> {
 
 	pub fn next_char(&mut self) -> Result<u8, JsonItError> {
 		let mut buf = [0_u8; 1];
-		self.reader
-			.read_exact(&mut buf)
-			.map_err(|err| JsonItError::IoError(err))?;
+		self.reader.read_exact(&mut buf).map_err(JsonItError::IoError)?;
 		Ok(buf[0])
 	}
 
 	fn deserialize_one_item(&mut self, maybe_byte: Option<u8>) -> Result<O, JsonItError> {
-		if let Some(w) = maybe_byte {
-			let r = &[w][..];
-			O::deserialize(&mut serde_json::Deserializer::from_reader(
-				&mut r.chain(self.reader.by_ref()),
-			))
-			.map_err(|e| JsonItError::SerdeError(e))
-		} else {
-			O::deserialize(&mut serde_json::Deserializer::from_reader(&mut self.reader)).map_err(|e| JsonItError::SerdeError(e))
+		match maybe_byte {
+			Some(w) => {
+				let r = &[w][..];
+				O::deserialize(&mut serde_json::Deserializer::from_reader(
+					&mut r.chain(self.reader.by_ref()),
+				))
+			}
+			None => O::deserialize(&mut serde_json::Deserializer::from_reader(&mut self.reader)),
 		}
+		.map_err(JsonItError::SerdeError)
 	}
 }
 

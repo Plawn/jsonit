@@ -117,7 +117,7 @@ mod tests {
 		let reader = data.as_bytes();
 		let prefix = at.as_bytes();
 		// does not handle the number for the moment being
-		let iterator = JsonSeqIterator::new(reader, &prefix);
+		let iterator = JsonSeqIterator::new(reader, prefix);
 
 		for res in iterator {
 			let item: T = res?;
@@ -142,7 +142,7 @@ mod tests {
 
 	#[test]
 	fn test_stack_compare() {
-		let stack = vec!["root".as_bytes(), "items".as_bytes()];
+		let stack = ["root".as_bytes(), "items".as_bytes()];
 		let prefix = "root.items".as_bytes();
 		let res = stack.join(".".as_bytes()) == prefix;
 		assert!(res)
@@ -150,7 +150,7 @@ mod tests {
 
 	#[test]
 	fn test_stack_compare_fail() {
-		let stack = vec!["root".as_bytes(), "items".as_bytes()];
+		let stack = ["root".as_bytes(), "items".as_bytes()];
 		let prefix = "root.item".as_bytes();
 		let res = stack.join(".".as_bytes()) != prefix;
 		assert!(res)
@@ -218,8 +218,8 @@ mod tests {
 
 	fn get_test_local_reader(path: &str) -> impl Read {
 		let f = get_test_file(path);
-		let reader = BufReader::new(f);
-		reader
+		
+		BufReader::new(f)
 	}
 
 	#[test]
