@@ -34,7 +34,7 @@ impl<R: Read> Iterator for ReaderIter<R> {
 }
 
 
-pub fn compare_stack(stack: &[Vec<u8>], prefix: &Vec<u8>) -> bool {
+pub fn compare_stack(stack: &[Vec<u8>], prefix: &[u8]) -> bool {
 	stack
 		.iter()
 		.flatten()

@@ -66,7 +66,7 @@ enum NotStartedState {
 	None,
 }
 
-impl<'a, R: Read, O: DeserializeOwned> Iterator for JsonSeqIterator<'_, R, O> {
+impl<R: Read, O: DeserializeOwned> Iterator for JsonSeqIterator<'_, R, O> {
 	type Item = Result<O, JsonItError>;
 	fn next(&mut self) -> Option<Self::Item> {
 		match self.state {

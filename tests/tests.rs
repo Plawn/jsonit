@@ -88,7 +88,7 @@ mod tests {
 		let prefix = "array";
 		let mut count = 0;
 		let chars = load_as_chars();
-		for (_, i) in stream_read_items_at::<Vec<u32>>(chars, prefix).enumerate() {
+		for i in stream_read_items_at::<Vec<u32>>(chars, prefix) {
 			match i {
 				Ok(value) => {
 					println!("{:?}", &value);
