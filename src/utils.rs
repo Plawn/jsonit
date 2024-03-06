@@ -1,5 +1,4 @@
-use std::io::Read;
-use anyhow::Result as InternalResult;
+use std::io::{Error, Read};
 
 
 pub fn make_prefix(prefix: &str) -> Vec<u8> {
@@ -20,7 +19,7 @@ impl<R: Read> ReaderIter<R> {
 		Self { reader }
 	}
 
-	pub fn next_char(&mut self) -> InternalResult<u8> {
+	pub fn next_char(&mut self) -> Result<u8, Error> {
 		let mut buf = [0_u8; 1];
 		self.reader.read_exact(&mut buf)?;
 		Ok(buf[0])
@@ -28,7 +27,7 @@ impl<R: Read> ReaderIter<R> {
 }
 
 impl<R: Read> Iterator for ReaderIter<R> {
-	type Item = InternalResult<u8>;
+	type Item = Result<u8, Error>;
 	fn next(&mut self) -> Option<Self::Item> {
 		Some(self.next_char())
 	}

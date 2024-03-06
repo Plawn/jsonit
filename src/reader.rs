@@ -1,6 +1,8 @@
+use std::char;
+
 use crate::utils::compare_stack_reader;
 
-use {anyhow::Result as InternalResult, serde::de::DeserializeOwned, std::io::Read};
+use {serde::de::DeserializeOwned, std::io::Read};
 
 pub struct JsonSeqIterator<'a, R, O> {
 	state: State<'a>,
@@ -24,21 +26,23 @@ impl<'a, R: Read, O: DeserializeOwned> JsonSeqIterator<'a, R, O> {
 		}
 	}
 
-	pub fn next_char(&mut self) -> InternalResult<u8> {
+	pub fn next_char(&mut self) -> Result<u8, JsonItError> {
 		let mut buf = [0_u8; 1];
-		self.reader.read_exact(&mut buf)?;
+		self.reader
+			.read_exact(&mut buf)
+			.map_err(|err| JsonItError::IoError(err))?;
 		Ok(buf[0])
 	}
 
-	fn deserialize_one_item(&mut self, v: Option<u8>) -> InternalResult<O> {
-		if let Some(w) = v {
+	fn deserialize_one_item(&mut self, maybe_byte: Option<u8>) -> Result<O, JsonItError> {
+		if let Some(w) = maybe_byte {
 			let r = &[w][..];
 			O::deserialize(&mut serde_json::Deserializer::from_reader(
 				&mut r.chain(self.reader.by_ref()),
 			))
-			.map_err(|e| e.into())
+			.map_err(|e| JsonItError::SerdeError(e))
 		} else {
-			O::deserialize(&mut serde_json::Deserializer::from_reader(&mut self.reader)).map_err(|e| e.into())
+			O::deserialize(&mut serde_json::Deserializer::from_reader(&mut self.reader)).map_err(|e| JsonItError::SerdeError(e))
 		}
 	}
 }
@@ -64,7 +68,7 @@ enum NotStartedState {
 }
 
 impl<'a, R: Read, O: DeserializeOwned> Iterator for JsonSeqIterator<'_, R, O> {
-	type Item = InternalResult<O>;
+	type Item = Result<O, JsonItError>;
 	fn next(&mut self) -> Option<Self::Item> {
 		match self.state {
 			State::NotStarted { path_to_look_for } => {
@@ -235,7 +239,7 @@ impl<'a, R: Read, O: DeserializeOwned> Iterator for JsonSeqIterator<'_, R, O> {
 								// suppose end
 								None
 							} else {
-								Some(Err(anyhow::anyhow!("[JsonIt] Unexpected character: {}", char::from(w))))
+								Some(Err(JsonItError::InvalidJsonCharacter(char::from(w))))
 							}
 						}
 					},
@@ -244,4 +248,12 @@ impl<'a, R: Read, O: DeserializeOwned> Iterator for JsonSeqIterator<'_, R, O> {
 			State::Ended => None,
 		}
 	}
+}
+
+#[derive(Debug)]
+pub enum JsonItError {
+	SerdeError(serde_json::Error),
+	IoError(std::io::Error),
+	// "[JsonIt] Unexpected character: {}",
+	InvalidJsonCharacter(char),
 }

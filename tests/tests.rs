@@ -102,15 +102,17 @@ mod tests {
 		assert!(count == 8);
 	}
 
-	use anyhow::Result as InternalResult;
+	use jsonit::JsonItError;
 
 	use log::info;
+
+	type TestResult = Result<(), JsonItError>;
 
 	fn setup_logging() {
 		INIT.call_once(|| init_logging(log::LevelFilter::Debug).unwrap());
 	}
 
-	fn test_string_with_type_at<T: DeserializeOwned + std::fmt::Debug>(data: &str, at: &str) -> InternalResult<()> {
+	fn test_string_with_type_at<T: DeserializeOwned + std::fmt::Debug>(data: &str, at: &str) -> TestResult {
 		setup_logging();
 		let reader = data.as_bytes();
 		let prefix = at.as_bytes();
@@ -125,10 +127,7 @@ mod tests {
 		Ok(())
 	}
 
-	fn test_read_with_type_at<T: DeserializeOwned + std::fmt::Debug, R: Read>(
-		reader: R,
-		at: &str,
-	) -> InternalResult<()> {
+	fn test_read_with_type_at<T: DeserializeOwned + std::fmt::Debug, R: Read>(reader: R, at: &str) -> TestResult {
 		setup_logging();
 		let prefix = at.as_bytes();
 		let iterator = JsonSeqIterator::new(reader, prefix);
@@ -158,13 +157,13 @@ mod tests {
 	}
 
 	#[test]
-	fn reader_number_option() -> InternalResult<()> {
+	fn reader_number_option() -> TestResult {
 		let data = r#"{"a": [ [1,2,null]] }"#;
 		test_string_with_type_at::<Vec<Option<i32>>>(data, "a")
 	}
 
 	#[test]
-	fn reader_struct() -> InternalResult<()> {
+	fn reader_struct() -> TestResult {
 		#[derive(Debug, Deserialize)]
 		struct S {
 			_b: i32,
@@ -174,23 +173,23 @@ mod tests {
 	}
 
 	#[test]
-	fn reader_string_option() -> InternalResult<()> {
+	fn reader_string_option() -> TestResult {
 		let data = r#"{"a": [ "deb","sneb",null                ] }"#;
 		test_string_with_type_at::<Option<String>>(data, "a")
 	}
 
 	#[test]
-	fn reader_from_read_nested() -> InternalResult<()> {
+	fn reader_from_read_nested() -> TestResult {
 		test_read_with_type_at::<Value, _>(get_test_local_reader("./tests/test.json"), "root.items")
 	}
 
 	#[test]
-	fn reader_from_read_deep() -> InternalResult<()> {
+	fn reader_from_read_deep() -> TestResult {
 		test_read_with_type_at::<serde_json::Value, _>(get_test_local_reader("./tests/test_confuse.json"), "a.b.c")
 	}
 
 	#[test]
-	fn reader_confuse() -> InternalResult<()> {
+	fn reader_confuse() -> TestResult {
 		setup_logging();
 		let prefix = "a.b.c".as_bytes();
 		let iterator = JsonSeqIterator::new(get_test_local_reader("./tests/test_confuse.json"), prefix);
@@ -224,12 +223,12 @@ mod tests {
 	}
 
 	#[test]
-	fn reader_from_read_empty() -> InternalResult<()> {
+	fn reader_from_read_empty() -> TestResult {
 		test_read_with_type_at::<Value, _>(get_test_local_reader("./tests/test.json"), "empty")
 	}
 
 	#[test]
-	fn reader_from_read_simple() -> InternalResult<()> {
+	fn reader_from_read_simple() -> TestResult {
 		test_read_with_type_at::<Option<String>, _>(get_test_local_reader("./tests/simple.json"), "a")
 	}
 }
