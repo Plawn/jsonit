@@ -43,6 +43,6 @@ pub fn compare_stack(stack: &[Vec<u8>], prefix: &[u8]) -> bool {
 		.count() == prefix.len()
 }
 
-pub fn compare_stack_reader(stack: &[Box<[u8]>], prefix: &[u8]) -> bool {
+pub fn compare_stack_reader(stack: &[Vec<u8>], prefix: &[u8]) -> bool {
 	stack.join(".".as_bytes()) == prefix
 }

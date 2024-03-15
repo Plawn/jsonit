@@ -72,7 +72,7 @@ impl<R: Read, O: DeserializeOwned> Iterator for JsonSeqIterator<'_, R, O> {
 		match self.state {
 			State::NotStarted { path_to_look_for } => {
 				// TODO advance the reader to the path. As a stub:
-				let mut key_stack: Vec<Box<[u8]>> = vec![];
+				let mut key_stack: Vec<Vec<u8>> = vec![];
 				// the current key where we parse the value
 				let mut current_key: Vec<u8> = vec![];
 				// keeps state of the parsing
@@ -122,8 +122,7 @@ impl<R: Read, O: DeserializeOwned> Iterator for JsonSeqIterator<'_, R, O> {
 									if c == b'\"' && !escape {
 										state = NotStartedState::ExpectPoints;
 										// TODO: should avoid cloning
-										key_stack.push(current_key.clone().into_boxed_slice());
-										current_key.clear();
+										key_stack.push(std::mem::take(&mut current_key));
 										stack_dirty = true;
 									} else {
 										current_key.push(c);
