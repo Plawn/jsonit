@@ -4,20 +4,25 @@ use crate::utils::compare_stack_reader;
 
 use {serde::de::DeserializeOwned, std::io::Read};
 
+/// Holds data in order to parse a stream of u8, represented as a [Read]
+/// Should be created using [JsonSeqIterator::new]
 pub struct JsonSeqIterator<'a, R, O> {
 	state: State<'a>,
 	reader: R,
 	output_type: std::marker::PhantomData<O>,
 }
+
 enum State<'a> {
 	NotStarted { path_to_look_for: PrefixPath<'a> },
 	Started,
 	Ended,
 }
 
-pub type PrefixPath<'a> = &'a [u8];
+type PrefixPath<'a> = &'a [u8];
 
 impl<'a, R: Read, O: DeserializeOwned> JsonSeqIterator<'a, R, O> {
+	
+	/// Creates a new [JsonSeqIterator] from a [Read] and a given prefix
 	pub fn new(reader: R, path_to_look_for: &'a [u8]) -> Self {
 		Self {
 			state: State::NotStarted { path_to_look_for },
@@ -26,7 +31,7 @@ impl<'a, R: Read, O: DeserializeOwned> JsonSeqIterator<'a, R, O> {
 		}
 	}
 
-	pub fn next_char(&mut self) -> Result<u8, JsonItError> {
+	fn next_char(&mut self) -> Result<u8, JsonItError> {
 		let mut buf = [0_u8; 1];
 		self.reader.read_exact(&mut buf).map_err(JsonItError::IoError)?;
 		Ok(buf[0])
@@ -65,7 +70,7 @@ enum NotStartedState {
 	ExpectPoints,
 	None,
 }
-
+ 
 impl<R: Read, O: DeserializeOwned> Iterator for JsonSeqIterator<'_, R, O> {
 	type Item = Result<O, JsonItError>;
 	fn next(&mut self) -> Option<Self::Item> {
@@ -248,6 +253,8 @@ impl<R: Read, O: DeserializeOwned> Iterator for JsonSeqIterator<'_, R, O> {
 	}
 }
 
+/// Master error for the [JsonSeqIterator]
+/// Holds error, for [std::io::Error], [serde_json::Error] and [JsonItError::InvalidJsonCharacter]
 #[derive(Debug)]
 pub enum JsonItError {
 	SerdeError(serde_json::Error),

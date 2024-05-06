@@ -1,9 +1,8 @@
 use std::io::{Error, Read};
 
-
+/// Makes a prefix for the [iterator::stream_read_items_at](stream_read_items_at) function
 pub fn make_prefix(prefix: &str) -> Vec<u8> {
 	let e = prefix.split('.');
-	
 	e
 		.map(|e| e.as_bytes())
 		.flat_map(|e| e.to_owned())

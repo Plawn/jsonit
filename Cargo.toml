@@ -1,11 +1,13 @@
 [package]
 name = "jsonit"
-version = "0.2.7"
+version = "0.2.8"
 edition = "2021"
-description = "Parse Json Items using iterators"
+description = "A way to parse Json Items using iterators from streams"
 license = "Apache-2.0"
 repository = "https://github.com/Plawn/jsonit"
-
+authors = ["Plawn plawn.yay@gmail.com"]
+keywords = ["stream", "json", "iterator", "serialization", "parsing"]
+categories  ["encoding"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"]}
